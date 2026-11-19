@@ -1,6 +1,6 @@
-# Mac Vision Tools
+# Percept
 
-Mac Vision Tools is a macOS menu bar app for real-time, on-device computer vision. It can run object detection, emotion classification, privacy monitoring, and focus tracking from either the camera or the screen.
+Percept is a macOS menu bar app for real-time, on-device computer vision. It can run object detection, emotion classification, privacy monitoring, and focus tracking from either the camera or the screen.
 
 The app is designed for quick experiments with Core ML and Vision models while keeping capture and inference local to the Mac.
 
@@ -66,7 +66,7 @@ Before submitting, deploy the landing page so the privacy policy URL is public, 
 ## Install A Release
 
 1. Download the latest app from the repo's Releases page.
-2. Move `MacVisionTools.app` to `/Applications`.
+2. Move `Percept.app` to `/Applications`.
 3. Open the app. If Gatekeeper blocks it, use System Settings to allow it.
 4. Grant Camera and/or Screen Recording permission depending on the capture source you want to use.
 
@@ -101,6 +101,23 @@ The bundled SSD MobileNet model is exported with raw detector outputs and postpr
 - The app does not create accounts, run analytics, track users, or send camera or screen content to a server.
 - Privacy Guard starts the screen saver when the configured person threshold is reached. For a true lock, enable macOS's setting to require a password immediately after screen saver begins.
 
+## App Store Screenshots
+
+Screenshots are composed from real renders of the control panel:
+
+```sh
+# 1. Render each mode's panel (Debug-only harness, unsandboxed so it can write into the repo)
+xcodebuild -project src/MacVisionTools.xcodeproj -scheme MacVisionTools -configuration Debug \
+  -derivedDataPath build/dd CODE_SIGN_ENTITLEMENTS= ENABLE_APP_SANDBOX=NO build
+build/dd/Build/Products/Debug/Percept.app/Contents/MacOS/Percept \
+  -PerceptRenderScreenshots YES -PerceptScreenshotDir "$PWD/screenshots"
+
+# 2. Compose 2880x1800 App Store images (app-store/) and website images (images/)
+swift tools/compose_real_screenshots.swift
+```
+
+The app icon is generated with `swift tools/generate_percept_icon.swift`. Store listing copy lives in `docs/app-store-listing.md`.
+
 ## Landing Page
 
 A static landing page is included in `website/`. Open `website/index.html` directly in a browser, or deploy the folder to GitHub Pages, Netlify, Vercel, or any static host.
@@ -118,6 +135,7 @@ For Cloudflare Pages, the repository also includes a root `index.html`, so the d
 | `src/Views.swift` | Mode-specific SwiftUI panels |
 | `src/Windows.swift` | Overlay and detection preview windows |
 | `images/` | README and landing-page screenshots |
+| `screenshots/` | Raw control-panel renders used by the screenshot composer |
 | `website/` | Static landing page |
 
 ## Troubleshooting

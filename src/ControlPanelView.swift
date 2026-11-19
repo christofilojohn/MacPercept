@@ -33,13 +33,15 @@ struct ControlPanelView: View {
     @State private var refreshRate: RefreshRate = .fps30
     @State private var selectedAppMode: AppMode = .standard
     @State private var showThirdPartyNotices = false
-    
+    /// Debug screenshot harness only: preselects a mode without running switchToMode side effects.
+    var initialMode: AppMode? = nil
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Image(systemName: selectedAppMode.icon).font(.title2).foregroundColor(appModeColor)
-                    Text("Vision Detector").font(.headline)
+                    Text("Percept").font(.headline)
                     Spacer()
                 }
                 Divider()
@@ -141,15 +143,15 @@ struct ControlPanelView: View {
                     Text("CAPTURE").font(.caption2).foregroundColor(.secondary)
                     HStack { Text("Source").font(.caption); Spacer()
                         Picker("", selection: $captureSource) { ForEach(CaptureSource.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
-                            .pickerStyle(.segmented).frame(width: 140).onChange(of: captureSource) { _ in onSourceChanged(captureSource, refreshRate) }
+                            .pickerStyle(.segmented).frame(width: 180).onChange(of: captureSource) { _ in onSourceChanged(captureSource, refreshRate) }
                     }
                     HStack { Text("Display").font(.caption); Spacer()
                         Picker("", selection: $displayMode) { ForEach(DisplayMode.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
-                            .pickerStyle(.segmented).frame(width: 140).onChange(of: displayMode) { _ in onDisplayModeChanged(displayMode) }
+                            .pickerStyle(.segmented).frame(width: 180).onChange(of: displayMode) { _ in onDisplayModeChanged(displayMode) }
                     }
                     HStack { Text("FPS").font(.caption); Spacer()
                         Picker("", selection: $refreshRate) { ForEach(RefreshRate.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
-                            .pickerStyle(.segmented).frame(width: 140).onChange(of: refreshRate) { _ in onSourceChanged(captureSource, refreshRate) }
+                            .pickerStyle(.segmented).frame(width: 180).onChange(of: refreshRate) { _ in onSourceChanged(captureSource, refreshRate) }
                     }
                 }
                 
@@ -192,6 +194,7 @@ struct ControlPanelView: View {
             }.padding()
         }
         .frame(width: 300, height: 560)
+        .onAppear { if let initialMode { selectedAppMode = initialMode } }
         .sheet(isPresented: $showThirdPartyNotices) {
             ThirdPartyNoticesView()
         }
@@ -339,7 +342,7 @@ private struct ThirdPartyNoticesView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Custom Models")
                             .font(.headline)
-                        Text("Mac Vision Tools can load user-selected Core ML models from local files. Those files are not bundled with the app; users are responsible for ensuring they have permission to use and redistribute any custom models they select.")
+                        Text("Percept can load user-selected Core ML models from local files. Those files are not bundled with the app; users are responsible for ensuring they have permission to use and redistribute any custom models they select.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -364,7 +367,7 @@ private struct ThirdPartyNoticesView: View {
                     .background(Color.secondary.opacity(0.08))
                     .cornerRadius(8)
 
-                    Text("The Mac Vision Tools app itself is licensed under Apache License 2.0. See the project LICENSE and CREDITS files for the full notices.")
+                    Text("The Percept app itself is licensed under Apache License 2.0. See the project LICENSE and CREDITS files for the full notices.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

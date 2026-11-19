@@ -40,10 +40,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
-        
+        #if DEBUG
+        if UserDefaults.standard.bool(forKey: "PerceptRenderScreenshots") {
+            ScreenshotHarness.run()
+            return
+        }
+        #endif
+
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "eye.circle", accessibilityDescription: "Vision")
+            button.image = NSImage(systemSymbolName: "eye.circle", accessibilityDescription: "Percept")
             button.action = #selector(togglePopover); button.target = self
         }
         
@@ -129,3 +135,88 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         }
     }
 }
+
+#if DEBUG
+// MARK: - Screenshot Harness (Debug builds only)
+// Renders the real ControlPanelView for each mode to PNGs for App Store/marketing assets.
+// Run: open Percept.app --args -PerceptRenderScreenshots YES
+// Output: ~/Library/Containers/<bundle id>/Data/Documents/screenshots/, or -PerceptScreenshotDir <path>
+// (a custom path needs an unsandboxed build: xcodebuild ... CODE_SIGN_ENTITLEMENTS= ENABLE_APP_SANDBOX=NO)
+@MainActor
+enum ScreenshotHarness {
+    static func run() {
+        Task { @MainActor in
+            let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let outDir = UserDefaults.standard.string(forKey: "PerceptScreenshotDir").map { URL(fileURLWithPath: $0, isDirectory: true) }
+                ?? docs.appendingPathComponent("screenshots", isDirectory: true)
+            try? FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
+            for mode in AppMode.allCases {
+                await render(mode: mode, to: outDir.appendingPathComponent("panel-\(slug(mode)).png"))
+            }
+            print("Screenshots written to \(outDir.path)")
+            NSApp.terminate(nil)
+        }
+    }
+
+    static func slug(_ mode: AppMode) -> String {
+        switch mode { case .standard: return "standard"; case .emotionVibes: return "emotion"; case .privacyGuard: return "privacy"; case .focusTimer: return "focus" }
+    }
+
+    static func render(mode: AppMode, to url: URL) async {
+        let manager = DetectionManager()
+        manager.currentAppMode = mode
+        let emotion = EmotionVibesState()
+        let focus = FocusTimerState()
+        let privacy = PrivacyGuardState()
+        let paths = ModelPathStorage()
+        paths.useBundled(for: mode)
+
+        if mode == .focusTimer {
+            manager.statusMessage = "Ready (Native Face Tracking)"
+        } else if let url = BundledModel.suggested(for: mode)?.bundleURL {
+            await manager.loadModel(from: url)
+        }
+
+        // Representative sample state so each mode's panel shows its live readout.
+        switch mode {
+        case .standard: break
+        case .emotionVibes:
+            for (label, conf) in [("Neutral", 0.71), ("Neutral", 0.66), ("Happy", 0.58), ("Happy", 0.81), ("Surprise", 0.52), ("Happy", 0.88), ("Happy", 0.9), ("Neutral", 0.6), ("Happy", 0.86)] {
+                emotion.recordEmotion(label, confidence: Float(conf))
+                try? await Task.sleep(nanoseconds: 2_000_000)
+            }
+        case .privacyGuard:
+            privacy.isArmed = true
+            privacy.updatePersonCount(1)
+        case .focusTimer:
+            focus.startSession()
+            focus.currentFocusTime = 18 * 60 + 42
+        }
+
+        let view = ControlPanelView(
+            manager: manager, emotionState: emotion, focusState: focus,
+            privacyState: privacy, modelPaths: paths, appDelegate: nil,
+            onDisplayModeChanged: { _ in }, onSourceChanged: { _, _ in },
+            initialMode: mode
+        )
+        .background(Color(nsColor: NSColor(calibratedWhite: 0.16, alpha: 1)))
+        .environment(\.colorScheme, .dark)
+
+        let host = NSHostingView(rootView: view)
+        host.frame = NSRect(x: 0, y: 0, width: 300, height: 560)
+        let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        window.appearance = NSAppearance(named: .darkAqua)
+        window.contentView = host
+        window.setFrameOrigin(NSPoint(x: 40, y: 40))
+        window.orderFrontRegardless()
+        try? await Task.sleep(nanoseconds: 600_000_000)
+        host.layoutSubtreeIfNeeded()
+        host.display()
+
+        guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return }
+        host.cacheDisplay(in: host.bounds, to: rep)
+        try? rep.representation(using: .png, properties: [:])?.write(to: url)
+        window.orderOut(nil)
+    }
+}
+#endif

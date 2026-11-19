@@ -142,7 +142,7 @@ class DetectionManager: NSObject, ObservableObject {
         statusMessage = "Starting screen..."
         guard CGPreflightScreenCaptureAccess() else {
             _ = CGRequestScreenCaptureAccess()
-            failCaptureStart("Screen Recording permission required. Enable it in System Settings > Privacy & Security > Screen Recording, then restart Mac Vision Tools.")
+            failCaptureStart("Screen Recording permission required. Enable it in System Settings > Privacy & Security > Screen Recording, then restart Percept.")
             return
         }
 

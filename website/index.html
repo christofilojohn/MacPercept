@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Mac Vision Tools is a macOS menu bar app for real-time local computer vision, object detection, emotion detection, privacy monitoring, and focus tracking.">
-    <title>Mac Vision Tools</title>
+    <meta name="description" content="Percept is a macOS menu bar app for real-time local computer vision, object detection, emotion detection, privacy monitoring, and focus tracking.">
+    <title>Percept</title>
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
     <link rel="manifest" href="/assets/site.webmanifest">
@@ -13,9 +13,9 @@
   </head>
   <body>
     <header class="site-header">
-      <a class="brand" href="#top" aria-label="Mac Vision Tools home">
+      <a class="brand" href="#top" aria-label="Percept home">
         <span class="brand-mark"></span>
-        <span>Mac Vision Tools</span>
+        <span>Percept</span>
       </a>
       <nav class="site-nav" aria-label="Primary navigation">
         <a href="#modes">Modes</a>
@@ -36,7 +36,7 @@
         <div class="hero-shade"></div>
         <div class="hero-copy">
           <p class="eyebrow">Local Core ML vision for macOS</p>
-          <h1 id="hero-title">Mac Vision Tools</h1>
+          <h1 id="hero-title">Percept</h1>
           <p class="hero-text">A menu bar workspace for real-time object detection, emotion monitoring, privacy guardrails, and focus sessions from camera or screen capture.</p>
           <div class="hero-actions">
             <a class="button primary" href="https://github.com/christofilojohn/MacVisionTools">GitHub Repo</a>
@@ -70,7 +70,7 @@
             <article class="mode-card accent-blue">
               <span class="mode-label">Focus</span>
               <h3>Attention timer</h3>
-              <p>Use native Apple Vision head-pose tracking to count focused time toward a session goal.</p>
+              <p>Use native on-device head-pose tracking to count focused time toward a session goal.</p>
             </article>
           </div>
         </div>
@@ -84,19 +84,19 @@
           </div>
           <div class="screenshot-row">
             <figure>
-              <img src="../images/standard.png" alt="Mac Vision Tools standard detection window">
+              <img src="../images/standard.png" alt="Percept standard detection window">
               <figcaption>Windowed detection preview</figcaption>
             </figure>
             <figure>
-              <img src="../images/emotion.png" alt="Mac Vision Tools emotion monitoring panel">
+              <img src="../images/emotion.png" alt="Percept emotion monitoring panel">
               <figcaption>Emotion mode controls</figcaption>
             </figure>
             <figure>
-              <img src="../images/privacy.png" alt="Mac Vision Tools privacy guard panel">
+              <img src="../images/privacy.png" alt="Percept privacy guard panel">
               <figcaption>Privacy guard threshold</figcaption>
             </figure>
             <figure>
-              <img src="../images/focus.png" alt="Mac Vision Tools focus timer panel">
+              <img src="../images/focus.png" alt="Percept focus timer panel">
               <figcaption>Native focus tracking</figcaption>
             </figure>
           </div>
@@ -108,7 +108,7 @@
           <div class="section-heading">
             <p class="eyebrow">Model contracts</p>
             <h2 id="models-title">Know what to train or drop in</h2>
-            <p>Mac Vision Tools accepts local Core ML models. Use these contracts when replacing a bundled model, training a new one, or choosing whether a file belongs in detection or emotion mode.</p>
+            <p>Percept accepts local Core ML models. Use these contracts when replacing a bundled model, training a new one, or choosing whether a file belongs in detection or emotion mode.</p>
           </div>
 
           <div class="model-grid">
@@ -148,7 +148,7 @@
             <article class="model-card accent-pink">
               <span class="mode-label">Bundled classifier</span>
               <h3>EmotiEff emotion model</h3>
-              <p>Used by Emotion mode after Apple Vision finds and crops a visible face.</p>
+              <p>Used by Emotion mode after the Vision framework finds and crops a visible face.</p>
               <div class="spec-list">
                 <div class="spec-row">
                   <span class="spec-key">Task</span>
@@ -160,7 +160,7 @@
                 </div>
                 <div class="spec-row">
                   <span class="spec-key">Input</span>
-                  <span class="spec-value">Face crop supplied by Apple Vision and scaled to the bundled model's 224 x 224 image input. Train replacement classifiers on face crops, not full camera frames.</span>
+                  <span class="spec-value">Face crop supplied by the Vision framework and scaled to the bundled model's 224 x 224 image input. Train replacement classifiers on face crops, not full camera frames.</span>
                 </div>
                 <div class="spec-row">
                   <span class="spec-key">Output</span>
@@ -225,7 +225,7 @@
             <h2 id="privacy-title">Inference stays local</h2>
           </div>
           <div class="privacy-copy">
-            <p>Mac Vision Tools uses Core ML, Vision, AVFoundation, and ScreenCaptureKit on your Mac. Camera and screen frames are processed for live detections and are not saved by the app.</p>
+            <p>Percept uses Core ML, Vision, AVFoundation, and ScreenCaptureKit on your Mac. Camera and screen frames are processed for live detections and are not saved by the app.</p>
             <p>Permissions are explicit: camera capture needs Camera access, and screen capture needs Screen Recording access in macOS System Settings.</p>
             <p>The app does not create accounts, run analytics, track users, or send camera or screen content to a server. Custom Core ML models selected by the user stay on the Mac.</p>
             <p>Privacy Guard starts the macOS screen saver when the configured person threshold is reached. macOS controls whether the screen saver requires a password.</p>

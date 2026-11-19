@@ -1,3 +1,9 @@
+// Composes App Store (2880x1800) and website images from real panel renders.
+// 1. Render panels (see ScreenshotHarness in src/MacVisionTools.swift):
+//    xcodebuild -project src/MacVisionTools.xcodeproj -scheme MacVisionTools -configuration Debug \
+//      -derivedDataPath build/dd CODE_SIGN_ENTITLEMENTS= ENABLE_APP_SANDBOX=NO build
+//    build/dd/Build/Products/Debug/Percept.app/Contents/MacOS/Percept -PerceptRenderScreenshots YES -PerceptScreenshotDir "$PWD/screenshots"
+// 2. Run from repo root: swift tools/compose_real_screenshots.swift
 import AppKit
 import Foundation
 
@@ -5,39 +11,20 @@ let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 let sourceDir = root.appendingPathComponent("screenshots", isDirectory: true)
 let imageDir = root.appendingPathComponent("images", isDirectory: true)
 let appStoreDir = root.appendingPathComponent("app-store/screenshots/en-US/mac-2880x1800", isDirectory: true)
+let iconURL = root.appendingPathComponent("design/app-icons/percept-1024.png")
 
 try FileManager.default.createDirectory(at: imageDir, withIntermediateDirectories: true)
 try FileManager.default.createDirectory(at: appStoreDir, withIntermediateDirectories: true)
 
-struct Shot {
-    let file: String
-    let title: String
-    let subtitle: String
-    let accent: NSColor
-    let cropTop: CGFloat
-    let cropBottom: CGFloat
-    let cropLeft: CGFloat
-    let cropRight: CGFloat
-}
+let canvas = CGSize(width: 2880, height: 1800)
+let white = NSColor(calibratedWhite: 0.97, alpha: 1)
+let grey = NSColor(calibratedWhite: 0.72, alpha: 1)
+let orange = NSColor(srgbRed: 1.0, green: 0.62, blue: 0.20, alpha: 1)
 
-let standard = Shot(file: "standard.png", title: "Live object detection.", subtitle: "Run SSD MobileNet V2 or drop in your own Core ML detector.", accent: .systemOrange, cropTop: 30, cropBottom: 4, cropLeft: 22, cropRight: 4)
-let emotion = Shot(file: "emotion vibes.png", title: "Emotion cues on device.", subtitle: "Apple Vision finds faces, then Emotieff classifies the visible expression.", accent: .systemPink, cropTop: 32, cropBottom: 4, cropLeft: 22, cropRight: 4)
-let privacy = Shot(file: "privacy.png", title: "Privacy guardrails.", subtitle: "Count visible people and start the macOS screen saver at your threshold.", accent: .systemRed, cropTop: 28, cropBottom: 4, cropLeft: 18, cropRight: 4)
-let focus = Shot(file: "focus.png", title: "Native focus tracking.", subtitle: "Apple Vision head-pose tracking, no extra model required.", accent: .systemBlue, cropTop: 12, cropBottom: 4, cropLeft: 18, cropRight: 4)
-
-func bitmap(_ size: CGSize) -> NSBitmapImageRep {
-    let rep = NSBitmapImageRep(
-        bitmapDataPlanes: nil,
-        pixelsWide: Int(size.width),
-        pixelsHigh: Int(size.height),
-        bitsPerSample: 8,
-        samplesPerPixel: 4,
-        hasAlpha: true,
-        isPlanar: false,
-        colorSpaceName: .deviceRGB,
-        bytesPerRow: 0,
-        bitsPerPixel: 0
-    )!
+func bitmap(_ size: CGSize, alpha: Bool = true) -> NSBitmapImageRep {
+    let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(size.width), pixelsHigh: Int(size.height),
+                               bitsPerSample: 8, samplesPerPixel: alpha ? 4 : 3, hasAlpha: alpha, isPlanar: false,
+                               colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
     rep.size = size
     return rep
 }
@@ -50,218 +37,210 @@ func draw(in rep: NSBitmapImageRep, _ block: () -> Void) {
     NSGraphicsContext.restoreGraphicsState()
 }
 
+/// Saves without an alpha channel: App Store Connect rejects screenshots that have one.
 func save(_ rep: NSBitmapImageRep, to url: URL) throws {
-    guard let data = rep.representation(using: .png, properties: [:]) else {
-        throw NSError(domain: "MacVisionToolsScreenshots", code: 1)
-    }
-    try data.write(to: url)
+    let w = rep.pixelsWide, h = rep.pixelsHigh
+    let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                        space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                        bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+    ctx.draw(rep.cgImage!, in: CGRect(x: 0, y: 0, width: w, height: h))
+    let flat = NSBitmapImageRep(cgImage: ctx.makeImage()!)
+    try flat.representation(using: .png, properties: [:])!.write(to: url)
 }
 
 func rounded(_ rect: CGRect, radius: CGFloat, fill: NSColor, stroke: NSColor? = nil, lineWidth: CGFloat = 2) {
     let path = NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius)
-    fill.setFill()
-    path.fill()
-    if let stroke {
-        stroke.setStroke()
-        path.lineWidth = lineWidth
-        path.stroke()
-    }
+    fill.setFill(); path.fill()
+    if let stroke { stroke.setStroke(); path.lineWidth = lineWidth; path.stroke() }
 }
 
 func text(_ value: String, rect: CGRect, size: CGFloat, weight: NSFont.Weight, color: NSColor, lineHeight: CGFloat? = nil) {
     let style = NSMutableParagraphStyle()
     style.lineBreakMode = .byWordWrapping
-    if let lineHeight {
-        style.minimumLineHeight = lineHeight
-        style.maximumLineHeight = lineHeight
-    }
+    if let lineHeight { style.minimumLineHeight = lineHeight; style.maximumLineHeight = lineHeight }
     NSString(string: value).draw(in: rect, withAttributes: [
-        .font: NSFont.systemFont(ofSize: size, weight: weight),
-        .foregroundColor: color,
-        .paragraphStyle: style
+        .font: NSFont.systemFont(ofSize: size, weight: weight), .foregroundColor: color, .paragraphStyle: style
     ])
 }
 
-func background(size: CGSize, accent: NSColor) {
-    NSGradient(colors: [
-        NSColor(calibratedRed: 0.055, green: 0.065, blue: 0.075, alpha: 1),
-        NSColor(calibratedRed: 0.105, green: 0.115, blue: 0.13, alpha: 1)
-    ])!.draw(in: CGRect(origin: .zero, size: size), angle: 315)
+func background(size: CGSize, accent: NSColor, glowCenter: CGPoint) {
+    NSGradient(colors: [NSColor(srgbRed: 0.05, green: 0.06, blue: 0.08, alpha: 1),
+                        NSColor(srgbRed: 0.11, green: 0.13, blue: 0.16, alpha: 1)])!
+        .draw(in: CGRect(origin: .zero, size: size), angle: 315)
+    let r = size.height * 0.62
+    NSGradient(colors: [accent.withAlphaComponent(0.30), accent.withAlphaComponent(0)])!
+        .draw(in: NSBezierPath(ovalIn: CGRect(x: glowCenter.x - r, y: glowCenter.y - r, width: r * 2, height: r * 2)),
+              relativeCenterPosition: .zero)
+}
 
-    accent.withAlphaComponent(0.24).setFill()
-    NSBezierPath(ovalIn: CGRect(x: size.width * 0.58, y: size.height * 0.54, width: size.width * 0.30, height: size.width * 0.30)).fill()
-    NSColor.systemGreen.withAlphaComponent(0.16).setFill()
-    NSBezierPath(ovalIn: CGRect(x: size.width * 0.66, y: size.height * 0.18, width: size.width * 0.22, height: size.width * 0.22)).fill()
+func tint(_ image: NSImage, _ color: NSColor) -> NSImage {
+    let out = NSImage(size: image.size)
+    out.lockFocus()
+    image.draw(in: CGRect(origin: .zero, size: image.size))
+    color.set()
+    CGRect(origin: .zero, size: image.size).fill(using: .sourceAtop)
+    out.unlockFocus()
+    return out
+}
 
-    NSColor(calibratedWhite: 1, alpha: 0.035).setStroke()
-    for x in stride(from: CGFloat(0), through: size.width, by: 120) {
-        let line = NSBezierPath()
-        line.move(to: CGPoint(x: x, y: 0))
-        line.line(to: CGPoint(x: x, y: size.height))
-        line.stroke()
+func symbol(_ name: String, size: CGFloat, color: NSColor) -> NSImage? {
+    guard let img = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
+        .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: size, weight: .regular)) else { return nil }
+    return tint(img, color)
+}
+
+/// Illustrative macOS menu bar strip so the panel reads as a menu bar popover.
+func menuBar(size: CGSize, iconX: CGFloat, symbolName: String) {
+    let bar = CGRect(x: 0, y: size.height - 56, width: size.width, height: 56)
+    NSColor(calibratedWhite: 0, alpha: 0.55).setFill(); bar.fill()
+    text("Thu 9:41", rect: CGRect(x: size.width - 230, y: bar.minY + 9, width: 200, height: 40), size: 28, weight: .medium, color: white)
+    var x = size.width - 300
+    for name in ["magnifyingglass", "battery.75percent", "wifi"] {
+        if let img = symbol(name, size: 28, color: white) {
+            img.draw(in: CGRect(x: x - img.size.width / 2, y: bar.midY - img.size.height / 2, width: img.size.width, height: img.size.height))
+        }
+        x -= 80
+    }
+    rounded(CGRect(x: iconX - 32, y: bar.minY + 7, width: 64, height: 42), radius: 10, fill: NSColor(calibratedWhite: 1, alpha: 0.24))
+    if let img = symbol(symbolName, size: 28, color: white) {
+        img.draw(in: CGRect(x: iconX - img.size.width / 2, y: bar.midY - img.size.height / 2, width: img.size.width, height: img.size.height))
     }
 }
 
-func image(for shot: Shot) throws -> NSImage {
-    let url = sourceDir.appendingPathComponent(shot.file)
-    guard let image = NSImage(contentsOf: url) else {
-        throw NSError(domain: "MacVisionToolsScreenshots", code: 2, userInfo: [NSLocalizedDescriptionKey: "Missing screenshot: \(url.path)"])
+/// Draws a real panel render as a popover hanging from the menu bar icon.
+func popover(_ file: String, top: CGFloat, centerX: CGFloat, scale: CGFloat) throws {
+    guard let panel = NSImage(contentsOf: sourceDir.appendingPathComponent(file)) else {
+        throw NSError(domain: "PerceptScreenshots", code: 2, userInfo: [NSLocalizedDescriptionKey: "Missing screenshots/\(file)"])
     }
-    return image
-}
-
-func drawSource(_ shot: Shot, in rect: CGRect) throws {
-    let source = try image(for: shot)
-    let sourceSize = source.size
-    let crop = CGRect(
-        x: shot.cropLeft,
-        y: shot.cropBottom,
-        width: sourceSize.width - shot.cropLeft - shot.cropRight,
-        height: sourceSize.height - shot.cropTop - shot.cropBottom
-    )
-    let shadow = NSShadow()
-    shadow.shadowColor = NSColor.black.withAlphaComponent(0.42)
-    shadow.shadowBlurRadius = 34
-    shadow.shadowOffset = CGSize(width: 0, height: -18)
+    let w = 300 * scale, h = 560 * scale
+    let rect = CGRect(x: centerX - w / 2, y: top - 24 - h, width: w, height: h)
+    let path = NSBezierPath(roundedRect: rect, xRadius: 28, yRadius: 28)
+    let arrow = NSBezierPath()
+    arrow.move(to: CGPoint(x: centerX - 28, y: rect.maxY - 1))
+    arrow.line(to: CGPoint(x: centerX, y: top))
+    arrow.line(to: CGPoint(x: centerX + 28, y: rect.maxY - 1))
+    arrow.close()
+    path.append(arrow)
 
     NSGraphicsContext.saveGraphicsState()
+    let shadow = NSShadow()
+    shadow.shadowColor = NSColor.black.withAlphaComponent(0.6)
+    shadow.shadowBlurRadius = 60
+    shadow.shadowOffset = CGSize(width: 0, height: -28)
     shadow.set()
-    rounded(rect.insetBy(dx: 8, dy: 8), radius: 42, fill: .black.withAlphaComponent(0.26))
+    NSColor(calibratedWhite: 0.16, alpha: 1).setFill(); path.fill()
     NSGraphicsContext.restoreGraphicsState()
 
-    source.draw(in: rect, from: crop, operation: .sourceOver, fraction: 1)
-}
-
-func websiteImage(_ shot: Shot, output: String) throws {
-    let size = CGSize(width: 1196, height: 1268)
-    let rep = bitmap(size)
-    draw(in: rep) {
-        background(size: size, accent: shot.accent)
-        let h: CGFloat = 1188
-        let sourceWidth = 608 - shot.cropLeft - shot.cropRight
-        let sourceHeight = 1158 - shot.cropTop - shot.cropBottom
-        let w = h * sourceWidth / sourceHeight
-        try? drawSource(shot, in: CGRect(x: (size.width - w) / 2, y: 40, width: w, height: h))
-    }
-    try save(rep, to: imageDir.appendingPathComponent(output))
-}
-
-func framedShot(_ shot: Shot, rect: CGRect, label: String? = nil) throws {
-    rounded(rect, radius: 34, fill: NSColor(calibratedRed: 0.08, green: 0.095, blue: 0.12, alpha: 1), stroke: NSColor(calibratedWhite: 1, alpha: 0.12))
-    let top = CGRect(x: rect.minX, y: rect.maxY - 62, width: rect.width, height: 62)
-    rounded(top, radius: 34, fill: NSColor(calibratedWhite: 1, alpha: 0.055))
-    [NSColor.systemRed, NSColor.systemYellow, NSColor.systemGreen].enumerated().forEach { index, color in
-        color.withAlphaComponent(0.88).setFill()
-        NSBezierPath(ovalIn: CGRect(x: rect.minX + 34 + CGFloat(index) * 30, y: rect.maxY - 38, width: 14, height: 14)).fill()
-    }
-    if let label {
-        text(label, rect: CGRect(x: rect.minX + 132, y: rect.maxY - 48, width: rect.width - 170, height: 26), size: 20, weight: .regular, color: NSColor(calibratedWhite: 0.72, alpha: 1))
-    }
-    let content = rect.insetBy(dx: 44, dy: 92)
-    let h = content.height
-    let sourceWidth = 608 - shot.cropLeft - shot.cropRight
-    let sourceHeight = 1158 - shot.cropTop - shot.cropBottom
-    let w = h * sourceWidth / sourceHeight
-    try drawSource(shot, in: CGRect(x: content.midX - w / 2, y: content.minY, width: w, height: h))
-}
-
-func pill(_ value: String, x: CGFloat, y: CGFloat, color: NSColor) {
-    let rect = CGRect(x: x, y: y, width: 560, height: 82)
-    rounded(rect, radius: 26, fill: color.withAlphaComponent(0.14), stroke: color.withAlphaComponent(0.55), lineWidth: 3)
-    text(value, rect: rect.insetBy(dx: 30, dy: 21), size: 30, weight: .semibold, color: NSColor(calibratedWhite: 0.96, alpha: 1))
+    NSGraphicsContext.saveGraphicsState()
+    NSBezierPath(roundedRect: rect, xRadius: 28, yRadius: 28).addClip()
+    panel.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1)
+    NSGraphicsContext.restoreGraphicsState()
+    NSColor(calibratedWhite: 1, alpha: 0.14).setStroke(); path.lineWidth = 2; path.stroke()
 }
 
 func featureBlock(_ title: String, detail: String, x: CGFloat, y: CGFloat, width: CGFloat, color: NSColor) {
-    let rect = CGRect(x: x, y: y, width: width, height: 118)
-    rounded(rect, radius: 26, fill: color.withAlphaComponent(0.14), stroke: color.withAlphaComponent(0.48), lineWidth: 3)
-    text(title, rect: CGRect(x: rect.minX + 30, y: rect.minY + 66, width: rect.width - 60, height: 34), size: 30, weight: .bold, color: NSColor(calibratedWhite: 0.96, alpha: 1))
-    text(detail, rect: CGRect(x: rect.minX + 30, y: rect.minY + 24, width: rect.width - 60, height: 38), size: 25, weight: .regular, color: NSColor(calibratedWhite: 0.72, alpha: 1), lineHeight: 31)
+    let rect = CGRect(x: x, y: y, width: width, height: 128)
+    rounded(rect, radius: 26, fill: color.withAlphaComponent(0.12), stroke: color.withAlphaComponent(0.42), lineWidth: 3)
+    rounded(CGRect(x: rect.minX + 32, y: rect.midY - 24, width: 10, height: 48), radius: 5, fill: color)
+    text(title, rect: CGRect(x: rect.minX + 70, y: rect.minY + 68, width: rect.width - 100, height: 42), size: 33, weight: .bold, color: white)
+    text(detail, rect: CGRect(x: rect.minX + 70, y: rect.minY + 22, width: rect.width - 100, height: 40), size: 27, weight: .regular, color: grey)
 }
 
-func appStoreSingle(_ name: String, shot: Shot, title: String, subtitle: String, features: [(String, String)], accent: NSColor) throws {
-    let size = CGSize(width: 2880, height: 1800)
-    let rep = bitmap(size)
+struct Page {
+    let output: String
+    let panel: String
+    let symbolName: String
+    let eyebrow: String
+    let title: String
+    let subtitle: String
+    let features: [(String, String)]
+    let accent: NSColor
+}
+
+func compose(_ page: Page, showIcon: Bool = false) throws {
+    let rep = bitmap(canvas)
+    let iconX: CGFloat = 2110
+    var failure: Error?
     draw(in: rep) {
-        background(size: size, accent: accent)
-        text("Mac Vision Tools", rect: CGRect(x: 180, y: 1532, width: 780, height: 42), size: 34, weight: .bold, color: accent)
-        text(title, rect: CGRect(x: 170, y: 1182, width: 1180, height: 300), size: 118, weight: .bold, color: NSColor(calibratedWhite: 0.96, alpha: 1), lineHeight: 126)
-        text(subtitle, rect: CGRect(x: 176, y: 990, width: 1030, height: 150), size: 44, weight: .regular, color: NSColor(calibratedWhite: 0.74, alpha: 1), lineHeight: 58)
-        for (index, feature) in features.enumerated() {
-            featureBlock(feature.0, detail: feature.1, x: 178, y: 775 - CGFloat(index) * 140, width: 760, color: index == 0 ? accent : .systemGreen)
+        background(size: canvas, accent: page.accent, glowCenter: CGPoint(x: iconX, y: 860))
+        menuBar(size: canvas, iconX: iconX, symbolName: page.symbolName)
+        let left: CGFloat = 176
+        var top: CGFloat = 1560
+        if showIcon, let icon = NSImage(contentsOf: iconURL) {
+            icon.draw(in: CGRect(x: left - 34, y: top - 250, width: 280, height: 280))
+            top -= 300
+        } else {
+            text(page.eyebrow.uppercased(), rect: CGRect(x: left + 4, y: top - 50, width: 1100, height: 50), size: 34, weight: .heavy, color: page.accent)
+            top -= 80
         }
-        try? framedShot(shot, rect: CGRect(x: 1540, y: 150, width: 910, height: 1500), label: title.replacingOccurrences(of: ".", with: ""))
+        let titleWidth = NSString(string: page.title).size(withAttributes: [.font: NSFont.systemFont(ofSize: 120, weight: .bold)]).width
+        let titleLines: CGFloat = titleWidth > 1300 ? 2 : 1
+        text(page.title, rect: CGRect(x: left - 6, y: top - 132 * titleLines, width: 1330, height: 132 * titleLines + 10),
+             size: 120, weight: .bold, color: white, lineHeight: 132)
+        top -= 132 * titleLines + 40
+        text(page.subtitle, rect: CGRect(x: left, y: top - 130, width: 1180, height: 130), size: 46, weight: .regular, color: grey, lineHeight: 62)
+        top -= 200
+        for (i, f) in page.features.enumerated() {
+            featureBlock(f.0, detail: f.1, x: left, y: top - 128 - CGFloat(i) * 156, width: 1080,
+                         color: i == 0 ? page.accent : NSColor.systemGreen)
+        }
+        do { try popover(page.panel, top: canvas.height - 62, centerX: iconX, scale: 2.78) } catch { failure = error }
     }
-    try save(rep, to: appStoreDir.appendingPathComponent(name))
+    if let failure { throw failure }
+    try save(rep, to: appStoreDir.appendingPathComponent(page.output))
 }
 
-func overview() throws {
-    let size = CGSize(width: 2880, height: 1800)
+func websiteImage(panel: String, accent: NSColor, output: String) throws {
+    let size = CGSize(width: 1196, height: 1268)
     let rep = bitmap(size)
+    var failure: Error?
     draw(in: rep) {
-        background(size: size, accent: .systemTeal)
-        text("Mac Vision Tools", rect: CGRect(x: 176, y: 1202, width: 1160, height: 280), size: 124, weight: .bold, color: NSColor(calibratedWhite: 0.96, alpha: 1), lineHeight: 132)
-        text("Local Core ML vision from the macOS menu bar.", rect: CGRect(x: 182, y: 1038, width: 1040, height: 120), size: 48, weight: .regular, color: NSColor(calibratedWhite: 0.74, alpha: 1), lineHeight: 62)
-        featureBlock("Runs on your Mac", detail: "No accounts, analytics, or server upload.", x: 184, y: 810, width: 780, color: .systemGreen)
-        featureBlock("Camera or screen", detail: "Use live camera input or ScreenCaptureKit.", x: 184, y: 670, width: 780, color: .systemOrange)
-        featureBlock("Bundled and custom models", detail: "Start with included models or select Core ML files.", x: 184, y: 530, width: 780, color: .systemBlue)
-        try? framedShot(standard, rect: CGRect(x: 1480, y: 160, width: 900, height: 1480), label: "Menu bar controls")
+        background(size: size, accent: accent, glowCenter: CGPoint(x: size.width / 2, y: size.height / 2))
+        do { try popover(panel, top: size.height - 28, centerX: size.width / 2, scale: 2.12) } catch { failure = error }
     }
-    try save(rep, to: appStoreDir.appendingPathComponent("01-overview.png"))
+    if let failure { throw failure }
+    try save(rep, to: imageDir.appendingPathComponent(output))
 }
 
-try websiteImage(standard, output: "standard.png")
-try websiteImage(emotion, output: "emotion.png")
-try websiteImage(privacy, output: "privacy.png")
-try websiteImage(focus, output: "focus.png")
+let pages = [
+    Page(output: "01-overview.png", panel: "panel-standard.png", symbolName: "eye.circle", eyebrow: "Percept",
+         title: "Percept", subtitle: "Real-time, on-device AI detection for your camera and screen, right from the menu bar.",
+         features: [("Private by design", "Frames stay on this computer. No accounts, analytics, or uploads."),
+                    ("Four modes in one", "Object detection, emotion cues, privacy guard, focus timer."),
+                    ("Bring your own model", "Use the bundled models or pick any Core ML file.")],
+         accent: orange),
+    Page(output: "02-object-detection.png", panel: "panel-standard.png", symbolName: "eye.circle", eyebrow: "Standard Detection",
+         title: "Detect objects live.", subtitle: "Run SSD MobileNet V2 on your camera or any screen, as a window or an overlay.",
+         features: [("80 everyday object classes", "People, laptops, phones, cups, and more."),
+                    ("Custom Core ML models", "Swap in your own detector in two clicks."),
+                    ("Tunable", "Set confidence and frame rate from the panel.")],
+         accent: orange),
+    Page(output: "03-emotion-vibes.png", panel: "panel-emotion.png", symbolName: "face.smiling", eyebrow: "Emotion Vibes",
+         title: "Read the room.", subtitle: "Faces are found and classified into seven expressions, entirely on device.",
+         features: [("Face-first pipeline", "Only the face crop is classified, and it is never saved."),
+                    ("Recent history", "A rolling strip shows how the mood shifts."),
+                    ("No uploads", "Camera frames never leave the device.")],
+         accent: .systemPink),
+    Page(output: "04-privacy-guard.png", panel: "panel-privacy.png", symbolName: "lock.shield", eyebrow: "Privacy Guard",
+         title: "Someone looking over your shoulder?", subtitle: "Percept counts the people in view and starts the screen saver when too many are watching.",
+         features: [("Choose your threshold", "Act at 2, 3, 4, or 5 people."),
+                    ("Counted on device", "Nothing is recorded or sent anywhere."),
+                    ("Pairs with the system lock", "Require a password right after the screen saver.")],
+         accent: .systemRed),
+    Page(output: "05-focus-timer.png", panel: "panel-focus.png", symbolName: "timer", eyebrow: "Focus Timer",
+         title: "Count the minutes that matter.", subtitle: "Head-pose tracking only counts time while you are actually looking at your work.",
+         features: [("No extra model", "Built-in face tracking does the work."),
+                    ("Session goals", "Aim for 15, 25, 45, or 60 minutes."),
+                    ("Adjustable sensitivity", "Decide how far you can glance away.")],
+         accent: .systemBlue)
+]
 
-try overview()
-try appStoreSingle(
-    "02-object-detection.png",
-    shot: standard,
-    title: "Detect objects live.",
-    subtitle: "Run SSD MobileNet V2 on camera or screen input, with a window or overlay preview.",
-    features: [
-        ("80 COCO classes", "Includes person, laptop, phone, and more."),
-        ("Custom Core ML", "Drop in your own detector for experiments."),
-        ("Adjustable threshold", "Tune confidence and frame rate from the panel.")
-    ],
-    accent: .systemOrange
-)
-try appStoreSingle(
-    "03-emotion-vibes.png",
-    shot: emotion,
-    title: "Read face emotion cues.",
-    subtitle: "Faces are detected first, then classified locally with the bundled emotion model.",
-    features: [
-        ("Face-first pipeline", "Apple Vision finds the face crop before inference."),
-        ("Local history", "Keep a short view of recent emotion results."),
-        ("On-device model", "No camera frames are uploaded.")
-    ],
-    accent: .systemPink
-)
-try appStoreSingle(
-    "04-privacy-guard.png",
-    shot: privacy,
-    title: "Trigger privacy guardrails.",
-    subtitle: "Count visible people locally and start the macOS screen saver when your threshold is reached.",
-    features: [
-        ("Person threshold", "Choose when Privacy Guard should act."),
-        ("Local detection", "People are counted on device."),
-        ("macOS lock control", "Your system setting decides password behavior.")
-    ],
-    accent: .systemRed
-)
-try appStoreSingle(
-    "05-local-models.png",
-    shot: focus,
-    title: "Track focus without a model.",
-    subtitle: "Apple Vision head-pose tracking powers focused-time sessions without uploading frames.",
-    features: [
-        ("Native Vision", "No custom model required for Focus Timer."),
-        ("Session targets", "Choose 15, 25, 45, or 60 minute goals."),
-        ("Live feedback", "See focused state and session progress.")
-    ],
-    accent: .systemBlue
-)
+try compose(pages[0], showIcon: true)
+for page in pages.dropFirst() { try compose(page) }
 
-print("Composited real screenshots into website and App Store assets.")
+try websiteImage(panel: "panel-standard.png", accent: orange, output: "standard.png")
+try websiteImage(panel: "panel-emotion.png", accent: .systemPink, output: "emotion.png")
+try websiteImage(panel: "panel-privacy.png", accent: .systemRed, output: "privacy.png")
+try websiteImage(panel: "panel-focus.png", accent: .systemBlue, output: "focus.png")
+
+print("Wrote \(pages.count) App Store screenshots to \(appStoreDir.path)")

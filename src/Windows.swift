@@ -66,7 +66,7 @@ class DetectionWindowController: NSWindowController {
     
     init() {
         let w = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 640, height: 480), styleMask: [.titled, .closable, .resizable, .miniaturizable], backing: .buffered, defer: false)
-        w.title = "Vision Detection"; w.minSize = NSSize(width: 320, height: 240)
+        w.title = "Percept — Live Detection"; w.minSize = NSSize(width: 320, height: 240)
         super.init(window: w); dv = DetectionView(); w.contentView = dv
     }
     

@@ -1,6 +1,6 @@
 # Acknowledgments and Third-Party Licenses
 
-Mac Vision Tools is built using open-source software and proprietary Apple frameworks. We gratefully acknowledge the following projects and developers.
+Percept is built using open-source software and proprietary Apple frameworks. We gratefully acknowledge the following projects and developers.
 
 The overall project is licensed under the Apache License 2.0.
 
