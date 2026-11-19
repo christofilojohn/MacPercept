@@ -2,13 +2,13 @@
 // 1. Render panels (see ScreenshotHarness in src/MacVisionTools.swift):
 //    xcodebuild -project src/MacVisionTools.xcodeproj -scheme MacVisionTools -configuration Debug \
 //      -derivedDataPath build/dd CODE_SIGN_ENTITLEMENTS= ENABLE_APP_SANDBOX=NO build
-//    build/dd/Build/Products/Debug/Percept.app/Contents/MacOS/Percept -PerceptRenderScreenshots YES -PerceptScreenshotDir "$PWD/screenshots"
+//    build/dd/Build/Products/Debug/Percept.app/Contents/MacOS/Percept -PerceptRenderScreenshots YES -PerceptScreenshotDir "$PWD/design/panel-renders"
 // 2. Run from repo root: swift tools/compose_real_screenshots.swift
 import AppKit
 import Foundation
 
 let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-let sourceDir = root.appendingPathComponent("screenshots", isDirectory: true)
+let sourceDir = root.appendingPathComponent("design/panel-renders", isDirectory: true)
 let imageDir = root.appendingPathComponent("images", isDirectory: true)
 let appStoreDir = root.appendingPathComponent("app-store/screenshots/en-US/mac-2880x1800", isDirectory: true)
 let iconURL = root.appendingPathComponent("design/app-icons/percept-1024.png")
@@ -110,7 +110,7 @@ func menuBar(size: CGSize, iconX: CGFloat, symbolName: String) {
 /// Draws a real panel render as a popover hanging from the menu bar icon.
 func popover(_ file: String, top: CGFloat, centerX: CGFloat, scale: CGFloat) throws {
     guard let panel = NSImage(contentsOf: sourceDir.appendingPathComponent(file)) else {
-        throw NSError(domain: "PerceptScreenshots", code: 2, userInfo: [NSLocalizedDescriptionKey: "Missing screenshots/\(file)"])
+        throw NSError(domain: "PerceptScreenshots", code: 2, userInfo: [NSLocalizedDescriptionKey: "Missing design/panel-renders/\(file)"])
     }
     let w = 300 * scale, h = 560 * scale
     let rect = CGRect(x: centerX - w / 2, y: top - 24 - h, width: w, height: h)

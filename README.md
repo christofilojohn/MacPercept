@@ -110,10 +110,10 @@ Screenshots are composed from real renders of the control panel:
 xcodebuild -project src/MacVisionTools.xcodeproj -scheme MacVisionTools -configuration Debug \
   -derivedDataPath build/dd CODE_SIGN_ENTITLEMENTS= ENABLE_APP_SANDBOX=NO build
 build/dd/Build/Products/Debug/Percept.app/Contents/MacOS/Percept \
-  -PerceptRenderScreenshots YES -PerceptScreenshotDir "$PWD/screenshots"
+  -PerceptRenderScreenshots YES -PerceptScreenshotDir "$PWD/design/panel-renders"
 
 # 2. Compose 2880x1800 App Store images (app-store/) and website images (images/)
-swift tools/compose_real_screenshots.swift
+swift tools/compose_real_screenshots.swift   # upload app-store/screenshots/en-US/mac-2880x1800/*.png
 ```
 
 The app icon is generated with `swift tools/generate_percept_icon.swift`. Store listing copy lives in `docs/app-store-listing.md`.
@@ -137,7 +137,7 @@ For Cloudflare Pages, the repository also includes a root `index.html`, so the d
 | `src/Views.swift` | Mode-specific SwiftUI panels |
 | `src/Windows.swift` | Overlay and detection preview windows |
 | `images/` | README and landing-page screenshots |
-| `screenshots/` | Raw control-panel renders used by the screenshot composer |
+| `design/panel-renders/` | Raw control-panel renders (not App Store sized) used by the screenshot composer |
 | `website/` | Static landing page |
 
 ## Troubleshooting
