@@ -275,7 +275,7 @@ struct ControlPanelView: View {
     }
 
     private func openPrivacyPolicy() {
-        if let url = URL(string: "https://macvisiontools.pages.dev/privacy/") {
+        if let url = URL(string: "https://perceptapp.pages.dev/privacy/") {
             NSWorkspace.shared.open(url)
         }
     }

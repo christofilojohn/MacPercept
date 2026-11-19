@@ -120,6 +120,8 @@ The app icon is generated with `swift tools/generate_percept_icon.swift`. Store 
 
 ## Landing Page
 
+Live at https://perceptapp.pages.dev/ (privacy policy at `/privacy/`).
+
 A static landing page is included in `website/`. Open `website/index.html` directly in a browser, or deploy the folder to GitHub Pages, Netlify, Vercel, or any static host.
 
 For Cloudflare Pages, the repository also includes a root `index.html`, so the default static deploy works from the repo root. Use no build command and `/` as the output directory.

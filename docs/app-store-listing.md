@@ -57,7 +57,8 @@ How to test: click the eye icon in the menu bar, choose a mode, leave Source on 
 
 ## URLs
 
-- Privacy policy: deploy `website/` and point this at `/privacy/`. The current `macvisiontools.pages.dev` subdomain still has the old name. Moving to a new Cloudflare Pages project (for example `percept-app.pages.dev`) is optional but cleaner.
+- Privacy policy: `https://perceptapp.pages.dev/privacy/` (Cloudflare Pages project `perceptapp`). The old `macvisiontools.pages.dev` project stays up so build 2 and older links keep working.
+- Marketing URL (optional): `https://perceptapp.pages.dev/`
 - Support URL: the GitHub issues page.
 
 ## Screenshots
